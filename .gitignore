@@ -1,0 +1,11 @@
+build*
+*.orig
+*~
+external
+.ipynb_checkpoints
+.directory
+benchmarking/
+__pycache__/
+.cache/
+.build
+.clangd
