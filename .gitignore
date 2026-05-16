@@ -9,3 +9,4 @@ __pycache__/
 .cache/
 .build
 .clangd
+docs/html

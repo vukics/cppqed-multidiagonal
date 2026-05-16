@@ -4,9 +4,9 @@ PROJECT_BRIEF          = "Multidiagonal sparse operator algebra for C++QED"
 
 OUTPUT_DIRECTORY       = docs
 
-INPUT                  = include src README.md
+INPUT                  = include mainpage.md
 RECURSIVE              = NO
-USE_MDFILE_AS_MAINPAGE = README.md
+USE_MDFILE_AS_MAINPAGE = mainpage.md
 
 GENERATE_LATEX         = NO
 
