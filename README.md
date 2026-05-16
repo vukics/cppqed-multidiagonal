@@ -14,7 +14,7 @@ with $\mathbb{K}_m$ an **arbitrary** set of offsets per subsystem axis.
 
 ## Why not `Tridiagonal`?
 
-The predecessor class `Tridiagonal<RANK>` in C++QED v2 was limited to at most three diagonals per axis and was **not closed under composition**: the product of two tridiagonal operators is in general pentadiagonal. `MultiDiagonal` lifts both restrictions — the operator algebra is closed under composition (`operator|`), direct product (`operator*`), addition, and Hermitian conjugation.
+The predecessor class `Tridiagonal<RANK>` in C++QED v2 stored exactly three diagonals per axis — at positions $-K$, $0$, $+K$ for a single shared offset $K$ — and was **not closed under composition**: the product of two tridiagonal operators is in general pentadiagonal, and with different offsets is not tridiagonal at all. `MultiDiagonal` lifts all these restrictions — any number of diagonals at independent arbitrary offsets, and the operator algebra is closed under composition (`operator|`), direct product (`operator*`), addition, and Hermitian conjugation.
 
 ## Features
 
