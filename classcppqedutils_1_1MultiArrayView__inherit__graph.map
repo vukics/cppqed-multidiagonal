@@ -1,0 +1,5 @@
+<map id="cppqedutils::MultiArrayView&lt; T, RANK &gt;" name="cppqedutils::MultiArrayView&lt; T, RANK &gt;">
+<area shape="rect" id="Node000001" title="A non&#45;owning, strided view over a contiguous buffer. Should be passed by value." alt="" coords="5,5,211,45"/>
+<area shape="rect" id="Node000002" href="$classcppqedutils_1_1MultiArray.html" title="Owning, move&#45;only, rank&#45;RANK array. Non&#45;copyable; follows value semantics regarding constness." alt="" coords="21,93,195,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,59,111,93,105,93,105,59"/>
+</map>

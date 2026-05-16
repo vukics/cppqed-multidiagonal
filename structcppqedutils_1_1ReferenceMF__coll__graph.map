@@ -1,0 +1,5 @@
+<map id="cppqedutils::ReferenceMF&lt; State &gt;" name="cppqedutils::ReferenceMF&lt; State &gt;">
+<area shape="rect" id="Node000001" title="Metafunction yielding the reference type of State. Defaults to State&amp;. Specialized for view types to ..." alt="" coords="13,108,203,148"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,5,211,60"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,74,111,108,105,108,105,74"/>
+</map>
