@@ -18,14 +18,12 @@ quantumoperator::MultiDiagonal<1> quantumoperator::multidiagonal::identity(size_
 /// Iterates over all pairs of diagonals from @p a and @p b. For each pair the result offset
 /// and direction (upper/lower) are determined by four cases based on the `Index` bits:
 ///
-/// | a         | b         | condition | result    | result offset |
-/// |-----------|-----------|-----------|-----------|---------------|
-/// | upper (1) | upper (1) | n+m < dim | upper     | n+m           |
-/// | lower (0) | lower (0) | n+m < dim | lower     | n+m           |
-/// | upper (1) | lower (0) | n < m     | lower     | m−n           |
-/// | upper (1) | lower (0) | n ≥ m     | upper     | n−m           |
-/// | lower (0) | upper (1) | m < n     | lower     | n−m           |
-/// | lower (0) | upper (1) | m ≥ n     | upper     | m−n           |
+/// | a         | b         | result direction         | result offset |
+/// |-----------|-----------|--------------------------|---------------|
+/// | upper (1) | upper (1) | upper, if n+m < dim      | n+m           |
+/// | lower (0) | lower (0) | lower, if n+m < dim      | n+m           |
+/// | upper (1) | lower (0) | lower if n<m, else upper | \|n−m\|       |
+/// | lower (0) | upper (1) | lower if m<n, else upper | \|n−m\|       |
 ///
 /// The result diagonal is built by pointwise multiplication of the two source dataViews
 /// on the valid index range, via an initializer lambda passed to `MultiArray`.
