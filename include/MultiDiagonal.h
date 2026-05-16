@@ -33,9 +33,10 @@ auto range(auto&& md)
 
 /// @brief A sparse matrix storing an arbitrary set of diagonals, closed under composition, direct product, and Hermitian conjugation.
 ///
-/// `MultiDiagonal<RANK>` supersedes `Tridiagonal<RANK>` from v2, which was limited to at most three
-/// diagonals per axis and was **not closed under composition** — the product of two tridiagonal operators
-/// is in general pentadiagonal. `MultiDiagonal` lifts both restrictions:
+/// `MultiDiagonal<RANK>` supersedes `Tridiagonal<RANK>` from v2, which stored exactly three diagonals
+/// per axis — at positions $-K$, $0$, $+K$ for a single shared offset $K$ — and was
+/// **not closed under composition**: the product of two tridiagonal operators is in general
+/// pentadiagonal, and with different offsets not tridiagonal at all. `MultiDiagonal` lifts all these restrictions:
 /// - Any number of diagonals at arbitrary offsets per axis.
 /// - `operator|` (composition) produces new diagonals at all pairwise offset sums — the algebra is closed.
 /// - `operator*` (direct product) concatenates offset arrays, reflecting tensor product structure exactly.
@@ -51,9 +52,8 @@ auto range(auto&& md)
 /// ### Time dependence
 /// `MultiDiagonal` is time-independent. Interaction-picture time dependence — diagonal elements
 /// of the form \f$\alpha_{m,n} e^{\delta_{m,n} t}\f$ with complex \f$\delta\f$ — is handled by
-/// `InteractionPictureDiagonal`, which derives from `MultiDiagonal` and adds a parallel frequency
-/// `MultiDiagonal` and `propagate(t)` bookkeeping. This separation keeps `MultiDiagonal` a clean,
-/// unconditionally time-independent algebraic type.
+/// a derived type in CPPQEDcore that adds a parallel frequency `MultiDiagonal` and `propagate(t)`
+/// bookkeeping. This separation keeps `MultiDiagonal` a clean, unconditionally time-independent algebraic type.
 ///
 /// ### Operator conventions
 /// - `operator()` applies \f$H/i\f$ (not \f$H\f$) to the state vector, consistent with the framework convention.
