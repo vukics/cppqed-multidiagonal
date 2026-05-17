@@ -1,5 +1,8 @@
 # cppqed-multidiagonal
 
+[![Documentation](https://img.shields.io/badge/docs-github.io-blue)](https://vukics.github.io/cppqed-multidiagonal/)
+[![License](https://img.shields.io/badge/license-BSL--1.0-green)](LICENSE.txt)
+
 A C++20 library implementing sparse multidiagonal operator algebra for quantum systems of arbitrary arity, extracted from the [C++QED](https://github.com/vukics/cppqed) framework.
 
 ## What is a multidiagonal operator?
