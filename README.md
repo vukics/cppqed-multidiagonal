@@ -11,7 +11,7 @@ A multidiagonal operator over a Hilbert space of dimension $N$ is a sparse matri
 
 For composite systems of arity $M$, `MultiDiagonal<RANK>` stores tensor-product-structured operators of the form
 
-$$H/i = \bigotimes_{m=0}^{M-1} \sum_{i_m \in \mathbb{K}_m} \sum_{n_m=0}^{N_m-1-i_m} \alpha^{i_m}_{m,n} \left|n_m+i_m\right\rangle\!\left\langle n_m\right|$$
+$$H/i = \bigotimes_{m=0}^{M-1} \sum_{i_m \in \mathbb{K}_m} \sum_{n_m=0}^{N_m-1-i_m} \alpha^{i_m}_{m,n} \left|n_m+i_m\right\rangle\left\langle n_m\right|$$
 
 with $\mathbb{K}_m$ an **arbitrary** set of offsets per subsystem axis.
 
