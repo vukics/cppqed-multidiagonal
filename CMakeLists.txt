@@ -39,6 +39,14 @@ target_compile_options(cppqed-multidiagonal
   PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>)
 
+# ── Tests ───────────────────────────────────────────────────────────────────
+if(PROJECT_IS_TOP_LEVEL)
+  include(CTest)                 # defines BUILD_TESTING, default ON
+  if(BUILD_TESTING)
+    add_subdirectory(tests)
+  endif()
+endif()
+
 # ── Install ─────────────────────────────────────────────────────────────────
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)

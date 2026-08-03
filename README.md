@@ -1,5 +1,6 @@
 # cppqed-multidiagonal
 
+[![CI](https://github.com/vukics/cppqed-multidiagonal/actions/workflows/ci.yml/badge.svg)](https://github.com/vukics/cppqed-multidiagonal/actions/workflows/ci.yml)
 [![Documentation](https://img.shields.io/badge/docs-github.io-blue)](https://vukics.github.io/cppqed-multidiagonal/)
 [![License](https://img.shields.io/badge/license-BSL--1.0-green)](LICENSE.txt)
 
