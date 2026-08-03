@@ -3,6 +3,7 @@
 
 #include "Traits.h"
 
+#include <boost/serialization/array.hpp>
 #include <boost/serialization/vector.hpp>
 
 #include <array>
@@ -288,8 +289,9 @@ public:
   /// @brief Constructs an uninitialized array with given extents.
   explicit MultiArray(Extents<RANK> extents) : MultiArray{extents,multiarray::noInit<T>} {}
 
-  /// @brief Rank-1 constructor from an existing storage vector (copies the data).
-  explicit MultiArray(const StorageType& st) requires (RANK==1) : MultiArray{{st.size()},multiarray::copyInit<T>(st)} {}
+  // @brief Rank-1 constructor from an existing storage vector (copies the data).
+  // explicit MultiArray(const StorageType& st) requires (RANK==1) : MultiArray{{st.size()},multiarray::copyInit<T>(st)} {}
+  // removed: It contradicts the library's own semantics, as this constructor is the one place where a silent deep copy hides behind constructor syntax.
 
   /// @brief Named copy: constructs a new owning array with a deep copy of @p ma's data.
   friend MultiArray copy(const MultiArray& ma) {return MultiArray{ma.extents, [&] (size_t) {return ma.dataStorage();}};}

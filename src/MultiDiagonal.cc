@@ -8,7 +8,7 @@ quantumoperator::MultiDiagonal<1> quantumoperator::multidiagonal::identity(size_
   MultiDiagonal<1> res;
   res.diagonals[1].emplace(
     MultiDiagonal<1>::Offsets{0},
-    MultiDiagonal<1>::Diagonal{ multiarray::StorageType<dcomp>(dim,1.) } );
+    MultiDiagonal<1>::Diagonal{ {dim}, [] (size_t e) {return multiarray::StorageType<dcomp>(e,1.);} } );
   return res;
 }
 
