@@ -248,9 +248,7 @@ Additional Inherited Members</h2></td></tr>
 requires ( !std::is_const_v&lt;<a class="el" href="classcppqedutils_1_1MultiArrayView.html">T</a>&gt; )<br />
 class cppqedutils::MultiArray&lt; T, RANK &gt;</div><p>Owning, move-only, rank-<code>RANK</code> array. Non-copyable; follows value semantics regarding constness. </p>
 <p>Derives from <code>MultiArrayConstView&lt;T,RANK&gt;</code> to expose the full view interface. The <code>dataView</code> span in the base is re-seated to <code>data_</code> after each construction or move.</p>
-<dl class="section note"><dt>Note</dt><dd>Known issue: <code>load()</code> (Boost.Serialization) deserializes <code>data_</code> into a fresh <code>std::vector</code> but does not re-seat the inherited <code>dataView</code> span — dangling span bug. Move construction is safe since <code>std::vector</code> move preserves the buffer address.</dd>
-<dd>
-The storage type <code>std::vector&lt;T&gt;</code> may eventually be replaced by <code>kokkos::View</code> or <code>std::valarray</code> for better HPC integration. </dd></dl>
+<dl class="section note"><dt>Note</dt><dd>The storage type <code>std::vector&lt;T&gt;</code> may eventually be replaced by <code>kokkos::View</code> or <code>std::valarray</code> for better HPC integration. </dd></dl>
 </div><h2 class="groupheader">Member Typedef Documentation</h2>
 <a id="a409d8f5480fe41bc224b9d974df3f4bc" name="a409d8f5480fe41bc224b9d974df3f4bc"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a409d8f5480fe41bc224b9d974df3f4bc">&#9670;&#160;</a></span>StorageType</h2>
