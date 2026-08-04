@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['logtree_0',['LogTree',['../namespacecppqedutils.html#a480a4ec4d6e454c41e415d564a3f17bd',1,'cppqedutils']]]
+  ['multiarrayconstview_0',['MultiArrayConstView',['../namespacecppqedutils.html#a77bff64643f60f47027234f355af174c',1,'cppqedutils']]]
 ];

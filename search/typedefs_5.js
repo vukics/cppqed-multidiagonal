@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['multiarrayconstview_0',['MultiArrayConstView',['../namespacecppqedutils.html#a77bff64643f60f47027234f355af174c',1,'cppqedutils']]]
+  ['offsets_0',['Offsets',['../structquantumoperator_1_1MultiDiagonal.html#acc7d3d0a41c8b663f539f6f88dd7963a',1,'quantumoperator::MultiDiagonal']]]
 ];

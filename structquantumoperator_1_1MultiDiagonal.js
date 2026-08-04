@@ -1,11 +1,9 @@
 var structquantumoperator_1_1MultiDiagonal =
 [
     [ "Diagonal", "structquantumoperator_1_1MultiDiagonal.html#a5346d9ee29af9a7681d9b029d6ddf5d1", null ],
-    [ "Diagonals", "structquantumoperator_1_1MultiDiagonal.html#abfa78acac370fc1369387503ad8c01f3", null ],
-    [ "DiagToIdx", "structquantumoperator_1_1MultiDiagonal.html#a8307e5539f636e016bb8f2cb4c3ef560", null ],
+    [ "Diagonals", "structquantumoperator_1_1MultiDiagonal.html#a63fc18ca979aba9ed5f3cbce57e7c9b6", null ],
     [ "Dimensions", "structquantumoperator_1_1MultiDiagonal.html#abe5166921e9f5aa8dd05d51a403713b5", null ],
-    [ "Index", "structquantumoperator_1_1MultiDiagonal.html#af8d6b9d6aa21177c3dcecdafe017a00e", null ],
-    [ "Offsets", "structquantumoperator_1_1MultiDiagonal.html#a83e6de3e36ae558dc0982709031f8ed6", null ],
+    [ "Offsets", "structquantumoperator_1_1MultiDiagonal.html#acc7d3d0a41c8b663f539f6f88dd7963a", null ],
     [ "MultiDiagonal", "structquantumoperator_1_1MultiDiagonal.html#af2b41f50101343757c8b82e2f6151027", null ],
     [ "MultiDiagonal", "structquantumoperator_1_1MultiDiagonal.html#ad455d05a45152cca1b39efefc378e379", null ],
     [ "MultiDiagonal", "structquantumoperator_1_1MultiDiagonal.html#ab27d08a97f40c04137599d1579c8194b", null ],
@@ -21,7 +19,7 @@ var structquantumoperator_1_1MultiDiagonal =
     [ "operator=", "structquantumoperator_1_1MultiDiagonal.html#a81a8992f576deb849026841cbe603123", null ],
     [ "operator=", "structquantumoperator_1_1MultiDiagonal.html#ad207eaa005b7d8e7c99647f835765c99", null ],
     [ "calculateAndCheckDimensions", "structquantumoperator_1_1MultiDiagonal.html#a6944e78b47a4742b1c5f52ac8e376410", null ],
-    [ "copy", "structquantumoperator_1_1MultiDiagonal.html#a60a9d2cfbd61a38fd3dfa082b4bf60dd", null ],
+    [ "copy", "structquantumoperator_1_1MultiDiagonal.html#ae106344eac3d23cc6b24bca7a6a18961", null ],
     [ "hermitianConjugateOf", "structquantumoperator_1_1MultiDiagonal.html#ab32de4ad2aab3d28f0120882d6b1a2aa", null ],
     [ "operator*", "structquantumoperator_1_1MultiDiagonal.html#ab34be9f0524f803d7852b3c3765ad99f", null ],
     [ "operator*", "structquantumoperator_1_1MultiDiagonal.html#a802ad935ea29488736c3260b9fb82469", null ],

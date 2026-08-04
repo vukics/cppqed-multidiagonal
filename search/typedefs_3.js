@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['index_0',['Index',['../structquantumoperator_1_1MultiDiagonal.html#af8d6b9d6aa21177c3dcecdafe017a00e',1,'quantumoperator::MultiDiagonal']]]
+  ['logtree_0',['LogTree',['../namespacecppqedutils.html#a480a4ec4d6e454c41e415d564a3f17bd',1,'cppqedutils']]]
 ];

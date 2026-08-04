@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['offsets_0',['Offsets',['../structquantumoperator_1_1MultiDiagonal.html#a83e6de3e36ae558dc0982709031f8ed6',1,'quantumoperator::MultiDiagonal']]]
+  ['reference_0',['Reference',['../namespacecppqedutils.html#a8be2a1ed08a8f9a96245a3d48a1e6c23',1,'cppqedutils']]]
 ];
