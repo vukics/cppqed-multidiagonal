@@ -26,7 +26,7 @@ TEST_CASE("scalar helpers", "[complex]")
 }
 
 
-TEST_CASE("relativeDeviation(0,0) returns 0 as documented — finding #6", "[complex][contract][!mayfail]")
+TEST_CASE("relativeDeviation(0,0) returns 0 as documented — finding #6", "[complex][contract]")
 {
   CHECK(relativeDeviation(0.,0.) == 0.);
 }
@@ -100,7 +100,7 @@ TEST_CASE("hermitianConjugateSelf: off-diagonal part", "[complex]")
 }
 
 
-TEST_CASE("hermitianConjugateSelf conjugates the diagonal — finding #4", "[complex][contract][!mayfail]")
+TEST_CASE("hermitianConjugateSelf conjugates the diagonal — finding #4", "[complex][contract]")
 {
   MultiArray<dcomp,2> m{{2,2}, multiarray::zeroInit<dcomp>};
   m(0,0)=1.+2i; m(1,1)=-3i; m(0,1)=1.; m(1,0)=2i;
@@ -123,7 +123,7 @@ TEST_CASE("twoTimesRealPartOfSelf: off-diagonal part is M+M† and Hermitian", "
 }
 
 
-TEST_CASE("twoTimesRealPartOfSelf: diagonal equals 2·Re — finding #5", "[complex][contract][!mayfail]")
+TEST_CASE("twoTimesRealPartOfSelf: diagonal equals 2·Re — finding #5", "[complex][contract]")
 {
   MultiArray<dcomp,2> m{{2,2}, multiarray::zeroInit<dcomp>};
   m(0,0)=3.+1i; m(1,1)=-2.+4i;

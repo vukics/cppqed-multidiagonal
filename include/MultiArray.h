@@ -261,10 +261,6 @@ const auto copyInit(const std::ranges::sized_range auto& input) {return [&] (siz
  * Derives from `MultiArrayConstView<T,RANK>` to expose the full view interface.
  * The `dataView` span in the base is re-seated to `data_` after each construction or move.
  *
- * @note Known issue: `load()` (Boost.Serialization) deserializes `data_` into a fresh
- * `std::vector` but does not re-seat the inherited `dataView` span — dangling span bug.
- * Move construction is safe since `std::vector` move preserves the buffer address.
- *
  * @note The storage type `std::vector<T>` may eventually be replaced by `kokkos::View`
  * or `std::valarray` for better HPC integration.
  */
@@ -357,10 +353,10 @@ private:
   template<class Archive> void save(Archive& ar, const unsigned int) const {ar & this->extents & data_;}
 
   /// @brief Boost.Serialization load: restores extents and data, then recomputes strides.
-  /// @warning Does not re-seat `dataView` after deserialization — dangling span bug. See class note.
   template<class Archive> void load(Archive& ar, const unsigned int)
   {
     ar & this->extents & data_; this->strides=multiarray::calculateStrides(this->extents); this->offset=0;
+    this->dataView=std::span<T>(data_);
   }
 
   BOOST_SERIALIZATION_SPLIT_MEMBER()

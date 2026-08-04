@@ -36,7 +36,11 @@ noexcept(noexcept(x*x)) // propagate noexcept
 { return x * x; }
 
 /// @brief Relative deviation between two values: `|a-b| / (|a|+|b|)`. Returns 0 if both are zero.
-double relativeDeviation(const auto& a, const auto& b) {return std::abs(a-b)/(std::abs(a)+std::abs(b));}
+double relativeDeviation(const auto& a, const auto& b)
+{
+  const double den = std::abs(a)+std::abs(b);
+  return den==0. ? 0. : std::abs(a-b)/den;
+}
 
 /// @brief Squared absolute value of a complex number: `|v|^2 = re^2 + im^2`.
 inline double sqrAbs(dcomp v) {return sqr(std::abs(v));}
@@ -161,15 +165,17 @@ template <size_t TWO_TIMES_RANK>
 void hermitianConjugateSelf(MultiArray<dcomp,TWO_TIMES_RANK>& ma)
 {
   const size_t matrixDim = multiarray::calculateExtent(halveExtents(ma.extents));
-  for (size_t i=0; i<matrixDim; ++i) for (size_t j=i+1; j<matrixDim; ++j) {
-    dcomp
-      &u=ma.dataStorage()[i+matrixDim*j],
-      &l=ma.dataStorage()[j+matrixDim*i];
-    u=conj(u); l=conj(l);
-    std::swap(u, l);
+  for (size_t i=0; i<matrixDim; ++i) {
+    ma.dataStorage()[i+matrixDim*i]=conj(ma.dataStorage()[i+matrixDim*i]);
+    for (size_t j=i+1; j<matrixDim; ++j) {
+      dcomp
+        &u=ma.dataStorage()[i+matrixDim*j],
+        &l=ma.dataStorage()[j+matrixDim*i];
+      u=conj(u); l=conj(l);
+      std::swap(u, l);
+    }
   }
 }
-
 
 /// @brief In-place replacement of a rank-`2R` matrix view @p mav with `M + M†` (twice its Hermitian part).
 ///
@@ -183,9 +189,8 @@ void twoTimesRealPartOfSelf(MultiArrayView<dcomp,TWO_TIMES_RANK> mav)
   auto _=[&] (size_t i, size_t j) -> dcomp& {return mav.dataView[i+matrixDim*j];};
   for (size_t i=0; i<matrixDim; ++i) {
     _(i,i)=2.*real(_(i,i));
-    for (size_t j=i; j<matrixDim; ++j) _(j,i)=conj(_(i,j)=_(i,j)+conj(_(j,i)));
+    for (size_t j=i+1; j<matrixDim; ++j) _(j,i)=conj(_(i,j)=_(i,j)+conj(_(j,i)));
   }
-};
-
+}
 
 } // cppqedutils
