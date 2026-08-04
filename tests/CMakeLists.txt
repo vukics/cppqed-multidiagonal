@@ -14,6 +14,9 @@ target_link_libraries(cppqed-multidiagonal-tests PRIVATE
   cppqed::multidiagonal          # brings Boost/Eigen transitively (PUBLIC on the lib)
   Catch2::Catch2WithMain)
 
+target_compile_options(cppqed-multidiagonal-tests PRIVATE
+  $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>)
+  
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 include(Catch)
 catch_discover_tests(cppqed-multidiagonal-tests)

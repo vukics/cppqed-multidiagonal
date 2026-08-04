@@ -17,27 +17,22 @@ find_package(Eigen3 REQUIRED NO_MODULE)
 # Boost.Hana is header-only and part of the Boost distribution;
 # it is pulled in transitively via Boost::headers.
 
-# ── Library target ──────────────────────────────────────────────────────────
-add_library(cppqed-multidiagonal STATIC
-  src/MultiDiagonal.cc)
+# ── Library target (header-only) ────────────────────────────────────────────
+add_library(cppqed-multidiagonal INTERFACE)
 
 add_library(cppqed::multidiagonal ALIAS cppqed-multidiagonal)
 
 target_include_directories(cppqed-multidiagonal
-  PUBLIC
+  INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 
 target_link_libraries(cppqed-multidiagonal
-  PUBLIC
-    Boost::headers      # Hana, JSON
+  INTERFACE
+    Boost::headers
     Boost::json
-    Boost::serialization  # transitional — will be replaced by HDF5
+    Boost::serialization
     Eigen3::Eigen)
-
-target_compile_options(cppqed-multidiagonal
-  PRIVATE
-    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>)
 
 # ── Tests ───────────────────────────────────────────────────────────────────
 if(PROJECT_IS_TOP_LEVEL)
@@ -52,8 +47,7 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 install(TARGETS cppqed-multidiagonal
-  EXPORT cppqed-multidiagonalTargets
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  EXPORT cppqed-multidiagonalTargets)
 
 install(DIRECTORY include/
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

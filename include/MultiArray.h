@@ -117,7 +117,7 @@ public:
 #ifndef   NDEBUG
     auto e=extents.begin();
     (... , [&] {
-      if (auto eComp=e++; i >= *eComp)
+      if (auto eComp=e++; static_cast<size_t>(i) >= *eComp)
         throw std::range_error("Index position: "+std::to_string(eComp-extents.begin())+", index value: "+std::to_string(i)+", extent: "+std::to_string(*eComp));
     } () );
 #endif // NDEBUG

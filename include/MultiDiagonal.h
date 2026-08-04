@@ -3,7 +3,7 @@
 
 #include "MultiArrayComplex.h"
 
-#include <bitset>
+#include <algorithm>
 #include <map>
 
 
@@ -11,24 +11,6 @@
 namespace quantumoperator {
 
 using namespace cppqedutils;
-
-namespace multidiagonal {
-
-
-/// @brief Returns a flat range of `(index, offsets, diagonal)` triples over all diagonals of @p md.
-/// Accepts either a pointer or a reference to a `MultiDiagonal`.
-auto range(auto&& md)
-{
-  if constexpr (std::is_pointer_v<std::decay_t<decltype(md)>>) return range(*md);
-  else return md.diagonals | std::views::transform([&](auto&& outer_entry) {
-    return outer_entry.second | std::views::transform([&](auto&& inner_entry) {
-      return std::tie(outer_entry.first, inner_entry.first, inner_entry.second);
-    });
-  }) | std::views::join;
-}
-
-
-} // multidiagonal
 
 
 /// @brief A sparse matrix storing an arbitrary set of diagonals, closed under composition, direct product, and Hermitian conjugation.
@@ -41,13 +23,21 @@ auto range(auto&& md)
 /// - `operator|` (composition) produces new diagonals at all pairwise offset sums — the algebra is closed.
 /// - `operator*` (direct product) concatenates offset arrays, reflecting tensor product structure exactly.
 ///
-/// This fulfills the design goal stated in the `Tridiagonal` documentation:
-/// \f[
-///   H/i = \bigotimes_{m=0}^{M-1}
-///     \sum_{i_m \in \mathbb{K}_m} \sum_{n_m=0}^{N_m-1-i_m}
-///     \alpha^{i_m}_{m,n}\, |n_m+i_m\rangle\langle n_m|
-/// \f]
-/// with \f$\mathbb{K}_m\f$ an **arbitrary** set of offsets per axis.
+/// ### Representation
+/// Each diagonal is keyed by a **signed offset** per axis: positive = upper, negative = lower,
+/// zero = main. The offset map is a homomorphism from \f$(\mathbb{Z}^R,+)\f$ into the operator algebra:
+/// - composition: \f$\text{offset}_{A|B} = \text{offset}_A + \text{offset}_B\f$ (per axis)
+/// - Hermitian conjugation: negation of all offsets
+/// - direct product: concatenation of offset arrays
+///
+/// **Storage convention.** The diagonal at signed offset \f$o\f$ (per axis, dimension \f$D\f$) has
+/// extent \f$D-|o|\f$, and entry \f$k\in[0,D-|o|)\f$ holds the matrix element
+/// \f[ d[k] = A_{k+o^-,\;k+o^+}, \qquad o^\pm = \max(\pm o,0). \f]
+/// This min(row,col)-anchored indexing is symmetric under transposition, so Hermitian conjugation
+/// negates the key and conjugates the values **without reindexing**.
+/// The invariant \f$\text{extent}_i + |o_i| = D_i\f$ holds for every diagonal and is enforced by
+/// `calculateAndCheckDimensions`; entries that are structurally zero (created e.g. by composition)
+/// are stored explicitly as zeros to preserve it.
 ///
 /// ### Time dependence
 /// `MultiDiagonal` is time-independent. Interaction-picture time dependence — diagonal elements
@@ -59,24 +49,17 @@ auto range(auto&& md)
 /// - `operator()` applies \f$H/i\f$ (not \f$H\f$) to the state vector, consistent with the framework convention.
 /// - \f$H\f$ need not be Hermitian: in QJMC and Master equation contexts it is the full effective
 ///   non-Hermitian Hamiltonian \f$H_\text{eff} = H_\text{phys} - \frac{i}{2}\sum_k J_k^\dagger J_k\f$.
-///
-/// ### Design note
-/// The `Index` (bitset) + `Offsets` (size_t array) two-level map is a known improvement target:
-/// replacing with a single `std::map<std::array<ptrdiff_t,RANK>, Diagonal>` of signed offsets
-/// would simplify composition arithmetic and eliminate the two-level structure. Deferred to a future refactor.
 template <size_t RANK>
 struct MultiDiagonal
 {
   using Dimensions = Extents<RANK>;
-  /// @brief Direction pattern: `true` = upper (or main) diagonal along axis `i`, `false` = lower.
-  /// @note `std::bitset` has hash but no comparison; `std::array` has lexicographic comparison by default.
-  using Index = std::bitset<RANK>;
-  using Offsets = Dimensions;
+  /// @brief Signed offsets, one per axis: positive = upper, negative = lower, zero = main diagonal.
+  /// @note `std::array<ptrdiff_t,RANK>` has lexicographic `operator<` out of the box — no custom comparator needed.
+  using Offsets = std::array<ptrdiff_t,RANK>;
   using Diagonal = MultiArray<dcomp,RANK>;
-  using DiagToIdx = std::map<Offsets,Diagonal>;
 
-  /// @brief Two-level map: direction pattern → offset magnitude → diagonal data.
-  using Diagonals = std::unordered_map<Index,DiagToIdx>;
+  /// @brief Single-level map: signed offsets → diagonal data.
+  using Diagonals = std::map<Offsets,Diagonal>;
 
   MultiDiagonal(const MultiDiagonal&) = delete; MultiDiagonal& operator=(const MultiDiagonal&) = delete;
   MultiDiagonal(MultiDiagonal&&) = default; MultiDiagonal& operator=(MultiDiagonal&&) = default;
@@ -84,17 +67,17 @@ struct MultiDiagonal
   explicit MultiDiagonal(auto&&... args) : diagonals{FWD(args)...} {}
 
   /// @brief Named deep copy.
-  friend MultiDiagonal copy(const auto& md)
+  friend MultiDiagonal copy(const MultiDiagonal& md)
   {
     MultiDiagonal res;
-    for (const auto& [index,offsets,diag] : multidiagonal::range(md)) res.diagonals[index].emplace(offsets,copy(diag));
+    for (const auto& [offsets,diag] : md.diagonals) res.diagonals.emplace(offsets,copy(diag));
     return res;
   }
 
   Diagonals diagonals;
 
   /// @brief Applies the operator as \f$H/i\f$: accumulates `dpsidt(idxLHS) += diag(idxDiag) * psi(idxRHS)`
-  /// for each diagonal.
+  /// for each diagonal. Per axis, rows run in \f$[o^-,D-o^+)\f$ and columns in \f$[o^+,D-o^-)\f$.
   void operator () (double, MultiArrayConstView<dcomp,RANK> psi, MultiArrayView<dcomp,RANK> dpsidt) const
   {
     if (diagonals.empty()) return;
@@ -103,11 +86,11 @@ struct MultiDiagonal
     if (psi.extents != calculateAndCheckDimensions(*this)) throw std::runtime_error("Mismatch between StateVector and MultiDiagonal dimensions");
 #endif // NDEBUG
 
-    for (const auto& [index,offsets,diag] : multidiagonal::range(this)) {
+    for (const auto& [offsets,diag] : diagonals) {
 
-      Dimensions ubound{psi.extents}, lboundLHS, lboundRHS;
-      for (auto&& [i,o,u,lL,lR] : std::views::zip(std::views::iota(0uz,RANK),offsets,ubound,lboundLHS,lboundRHS)) {
-        u -= index[i] ? o : 0; lL = index[i] ? 0 : o; lR = index[i] ? o : 0;
+      Dimensions ubound{psi.extents}, lboundLHS{}, lboundRHS{};
+      for (auto&& [o,u,lL,lR] : std::views::zip(offsets,ubound,lboundLHS,lboundRHS)) {
+        lL = o<0 ? size_t(-o) : 0uz; lR = o>0 ? size_t(o) : 0uz; u -= lR;
       }
 
       const auto increment=[&] (auto n, const auto& inc, Dimensions& idxLHS, Dimensions& idxRHS, Dimensions& idxDiag)
@@ -126,17 +109,14 @@ struct MultiDiagonal
   }
 
 
-  /// @brief Tensor (direct) product: produces a `MultiDiagonal<RANK+RANK2>` with concatenated indices and offsets.
+  /// @brief Tensor (direct) product: concatenates the signed offset arrays, reflecting the tensor
+  /// product structure exactly. Axes of @p md1 come first.
   template <size_t RANK2>
   friend auto operator* (const MultiDiagonal<RANK>& md1, const MultiDiagonal<RANK2>& md2)
   {
-    using ResultType = MultiDiagonal<RANK+RANK2>;
-    ResultType res;
-    for (const auto& [index1,diagToIndex1] : md1.diagonals) for (const auto& [index2,diagToIndex2] : md2.diagonals) {
-      typename ResultType::Index resIndex{index2.to_string()+index1.to_string()};
-      for (const auto& [offsets1,diag1] : diagToIndex1) for (const auto& [offsets2,diag2] : diagToIndex2)
-        res.diagonals[resIndex].emplace(concatenate(offsets1,offsets2),directProduct(diag1,diag2));
-    }
+    MultiDiagonal<RANK+RANK2> res;
+    for (const auto& [offsets1,diag1] : md1.diagonals) for (const auto& [offsets2,diag2] : md2.diagonals)
+      res.diagonals.emplace(concatenate(offsets1,offsets2),directProduct(diag1,diag2));
     return res;
   }
 
@@ -144,15 +124,16 @@ struct MultiDiagonal
   /// @name Hermitian conjugation
   //@{
 
-  /// @brief In-place Hermitian conjugation.
-  /// Flips `Index` bits for non-zero offsets (transpose) and conjugates all diagonal elements.
+  /// @brief In-place Hermitian conjugation: negates all offsets and conjugates all diagonal elements.
+  /// No reindexing of the stored data is needed — see the storage convention in the class documentation.
   MultiDiagonal& hermitianConjugate()
   {
     Diagonals newDiagonals;
-    for (auto&& [index,offsets,diag] : multidiagonal::range(this)) {
-      Index newIndex{index}; for (size_t i=0; i<RANK; ++i) if (offsets[i]) newIndex.flip(i);
+    for (auto& [offsets,diag] : diagonals) {
+      Offsets newOffsets;
+      for (size_t i=0; i<RANK; ++i) newOffsets[i]=-offsets[i];
       conj(diag);
-      newDiagonals[newIndex].emplace(offsets,std::move(diag));
+      newDiagonals.emplace(newOffsets,std::move(diag));
     }
     diagonals.swap(newDiagonals);
     return *this;
@@ -170,14 +151,9 @@ struct MultiDiagonal
   /// @name Algebra
   /// @note Boost.Operator cannot be used since `MultiDiagonal` is not copyable.
   //@{
-  MultiDiagonal operator-() const
-  {
-    MultiDiagonal res{copy(this)};
-    for (auto&& [index,offsets,diag] : multidiagonal::range(res)) for (dcomp& v : diag.dataStorage()) v*=-1;
-    return res;
-  }
+  MultiDiagonal operator-() const {MultiDiagonal res{copy(*this)}; res*=-1.; return res;}
 
-  MultiDiagonal operator+() const {return copy(this);}
+  MultiDiagonal operator+() const {return copy(*this);}
 
   /// @brief In-place addition. New diagonals are inserted; existing ones accumulate element-wise.
   MultiDiagonal& operator+=(const MultiDiagonal& md)
@@ -187,9 +163,10 @@ struct MultiDiagonal
       dim!=Dimensions{} && mdDim!=Dimensions{} && dim!=mdDim)
         throw std::runtime_error("Dimension mismatch in addition of MultiDiagonals");
 #endif // NDEBUG
-    for (const auto& [index,offsets,diag] : multidiagonal::range(md))
-      if (auto insertResult=diagonals[index].emplace(offsets,copy(diag)); !insertResult.second)
-        for (auto&& [to,from] : std::views::zip(insertResult.first->second.dataStorage(),diag.dataStorage())) to+=from;
+    for (const auto& [offsets,diag] : md.diagonals)
+      if (auto it=diagonals.find(offsets); it!=diagonals.end())
+        for (auto&& [to,from] : std::views::zip(it->second.dataStorage(),diag.dataStorage())) to+=from;
+      else diagonals.emplace(offsets,copy(diag));
     return *this;
   }
 
@@ -197,7 +174,7 @@ struct MultiDiagonal
 
   MultiDiagonal& operator*=(scalar auto d)
   {
-    for (auto&& [index,offsets,diag] : multidiagonal::range(this)) for (dcomp& v : diag.dataStorage()) v*=d;
+    for (auto& [offsets,diag] : diagonals) for (dcomp& v : diag.dataStorage()) v*=d;
     return *this;
   }
 
@@ -211,43 +188,110 @@ struct MultiDiagonal
   //@}
 
 
-  /// @brief Derives and validates the Hilbert space dimensions from diagonal extents and offsets.
-  /// Returns `Dimensions{}` for an empty operator. Throws if any diagonal is inconsistent.
+  /// @brief Derives and validates the Hilbert space dimensions from the invariant
+  /// \f$\text{extent}_i + |o_i| = D_i\f$. Returns `Dimensions{}` for an empty operator.
+  /// Throws if any diagonal is inconsistent.
   friend Dimensions calculateAndCheckDimensions(const MultiDiagonal& md)
   {
     if (md.diagonals.empty()) return {};
 
-    auto transformExtentsOfDiagonals = [] (const auto& diagonal) -> Dimensions {
-      auto res{diagonal.second.extents};
-      for (auto&& [v,o] : std::views::zip(res,diagonal.first)) v+=o;
+    auto impliedDimensions = [] (const auto& kv) -> Dimensions {
+      auto res{kv.second.extents};
+      for (auto&& [v,o] : std::views::zip(res,kv.first)) v += size_t(o<0 ? -o : o);
       return res;
     };
 
-    auto res{transformExtentsOfDiagonals(*md.diagonals.cbegin()->second.cbegin())};
+    const auto res{impliedDimensions(*md.diagonals.cbegin())};
 
-    if (!std::ranges::fold_left_first( std::views::join(md.diagonals | std::views::values) | std::views::transform([=] (const auto& diagonal) {
-      return std::ranges::equal(res,transformExtentsOfDiagonals(diagonal));
-    }), std::logical_and{} ).value_or(true)) throw std::runtime_error("Dimensions mismatch in MultiDiagonal");
+    for (const auto& kv : md.diagonals)
+      if (impliedDimensions(kv)!=res) throw std::runtime_error("Dimensions mismatch in MultiDiagonal");
 
     return res;
   }
 
-  /// @brief Boost.JSON serialization: emits a JSON object keyed by direction-pattern bitstring.
+  /// @brief Boost.JSON serialization: emits an array of `{"offsets": [...], "diagonal": {...}}` objects.
   friend void tag_invoke( const json::value_from_tag&, json::value& jv, const MultiDiagonal& md )
   {
-    for (const auto& d : md.diagonals) jv.as_object().emplace( d.first.to_string(), json::value_from(d.second) );
+    json::array& arr = jv.emplace_array();
+    for (const auto& [offsets,diag] : md.diagonals)
+      arr.push_back( json::object{ {"offsets",json::value_from(offsets)}, {"diagonal",json::value_from(diag)} } );
   }
 
 };
 
 
-/// @brief Composition of two rank-1 `MultiDiagonal` operators: \f$(A|B)_{nm} = \sum_k A_{nk} B_{km}\f$.
+/// @brief Composition (matrix product) of two `MultiDiagonal` operators of arbitrary rank:
+/// \f$(A|B)_{rc} = \sum_m A_{rm} B_{mc}\f$.
 ///
-/// Result diagonals appear at all pairwise offset sums; see `MultiDiagonal.cc` for the four upper/lower cases.
+/// For each pair of diagonals — \f$A\f$ at signed offsets \f$p\f$, \f$B\f$ at \f$q\f$ (per axis,
+/// dimension \f$D\f$) — the contribution lands on the result diagonal at
+/// \f[ s = p + q \qquad\text{(the offset homomorphism).} \f]
+/// With the storage convention \f$d[k]=M_{k+o^-,k+o^+}\f$, entry \f$k\f$ of the result receives
+/// \f[ r[k] \mathrel{+}= d_A[k+i_A]\, d_B[k+i_B], \qquad i_A = s^--p^-, \quad i_B = s^-+p-q^-, \f]
+/// valid on the window
+/// \f[ k \in \bigl[\, \max(0,-i_A,-i_B),\ \min(D-|s|,\,D-|p|-i_A,\,D-|q|-i_B) \,\bigr). \f]
+/// Entries of the result diagonal outside the window are structural zeros, stored explicitly so that
+/// the invariant \f$\text{extent}+|s|=D\f$ holds. Pairs with \f$|s_i|\ge D_i\f$ or an empty window
+/// on any axis are structurally zero and skipped. **Contributions from different \f$(p,q)\f$ pairs
+/// to the same \f$s\f$ accumulate** — this is essential for correctness, not an optimization
+/// (e.g. \f$\sigma_x|\sigma_x\f$ assembles its main diagonal from two complementary pairs).
 ///
-/// @note Only rank-1 composition is currently implemented.
+/// Complexity: \f$O(d_A\, d_B)\f$ diagonal pairs, each linear in the window volume.
+///
 /// @note `operator*` has higher precedence than `operator|` in C++; use parentheses in mixed expressions.
-MultiDiagonal<1> operator|(const MultiDiagonal<1>&, const MultiDiagonal<1>&);
+template <size_t RANK>
+MultiDiagonal<RANK> operator|(const MultiDiagonal<RANK>& a, const MultiDiagonal<RANK>& b)
+{
+  using MD = MultiDiagonal<RANK>;
+
+  if (a.diagonals.empty() || b.diagonals.empty()) return MD{}; // composition with the zero operator
+
+  const auto dim = calculateAndCheckDimensions(a);
+  if (dim != calculateAndCheckDimensions(b)) throw std::runtime_error("Mismatch in MultiDiagonal composition dimensions");
+
+  MD res;
+
+  for (const auto& [p,diagA] : a.diagonals) for (const auto& [q,diagB] : b.diagonals) {
+
+    typename MD::Offsets s;                     // s = p + q
+    Extents<RANK> resExtents, start, box;       // result-diagonal extents; valid window [start, start+box)
+    std::array<ptrdiff_t,RANK> iA, iB;          // index shifts into the operand diagonals
+
+    bool nonzero=true;
+
+    for (size_t i=0; i<RANK; ++i) {
+      const ptrdiff_t D=ptrdiff_t(dim[i]), pi=p[i], qi=q[i], si=pi+qi,
+        sm = si<0 ? -si : 0, pm = pi<0 ? -pi : 0, qm = qi<0 ? -qi : 0,      // negative parts o⁻
+        sa = si<0 ? -si : si, pa = pi<0 ? -pi : pi, qa = qi<0 ? -qi : qi;   // magnitudes |o|
+
+      if (sa >= D) {nonzero=false; break;}
+
+      const ptrdiff_t ia = sm - pm, ib = sm + pi - qm,
+        st = std::max({ptrdiff_t{0}, -ia, -ib}),
+        en = std::min({D - sa, D - pa - ia, D - qa - ib});
+
+      if (en <= st) {nonzero=false; break;}
+
+      s[i]=si; resExtents[i]=size_t(D-sa); start[i]=size_t(st); box[i]=size_t(en-st); iA[i]=ia; iB[i]=ib;
+    }
+    if (!nonzero) continue;
+
+    // find-or-create the result diagonal (zero-initialized); accumulate the windowed products
+    auto& resDiag = res.diagonals.try_emplace(s, resExtents, multiarray::zeroInit<dcomp>).first->second;
+
+    for (Extents<RANK> t{}; t[0]!=box[0]; incrementMultiIndex(t,box)) {
+      Extents<RANK> kRes, kA, kB;
+      for (size_t i=0; i<RANK; ++i) {
+        kRes[i]=start[i]+t[i];
+        kA[i]=size_t(ptrdiff_t(kRes[i])+iA[i]);
+        kB[i]=size_t(ptrdiff_t(kRes[i])+iB[i]);
+      }
+      resDiag(kRes) += diagA(kA)*diagB(kB);
+    }
+  }
+
+  return res;
+}
 
 
 namespace multidiagonal {
@@ -259,3 +303,15 @@ MultiDiagonal<1> identity(size_t dim);
 
 
 } // quantumoperator
+
+
+/// @brief Rank-1 identity operator: a single main diagonal (signed offset 0) filled with 1.
+/** (This could be compiled separately, but let’s not drop header-onliness for a single function) */
+quantumoperator::MultiDiagonal<1> quantumoperator::multidiagonal::identity(size_t dim)
+{
+  MultiDiagonal<1> res;
+  res.diagonals.emplace(
+    MultiDiagonal<1>::Offsets{0},
+    MultiDiagonal<1>::Diagonal{ {dim}, [] (size_t e) {return multiarray::StorageType<dcomp>(e,1.);} } );
+  return res;
+}
