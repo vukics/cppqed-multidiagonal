@@ -367,6 +367,19 @@ private:
   
 };
 
+
+namespace multiarray {
+
+/// @brief Move-in construction of a *copy* of the argument.
+template <typename T>
+MultiArray<T,1> fromStorage(std::vector<T> v)
+{
+  const size_t s = v.size();
+  return MultiArray<T,1>{ {s}, [&] (size_t) {return std::move(v);} };
+}
+
+} // multiarray
+
 /// @brief `MultiArray` owns its data and must not be passed by value.
 template <typename T, size_t RANK>
 constexpr auto passByValue_v<MultiArray<T,RANK>> = false;

@@ -6,9 +6,8 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(cppqed-multidiagonal-tests
   testMultiArray.cc
-#  testSliceIterator.cc
-#  testMultiArrayComplex.cc
-#  testMultiDiagonal.cc
+  testMultiArrayComplex.cc
+  testMultiDiagonal.cc
 )
 
 target_link_libraries(cppqed-multidiagonal-tests PRIVATE

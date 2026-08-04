@@ -1,0 +1,144 @@
+// Part of the cppqed-multidiagonal test suite. BSL-1.0.
+#include "MultiArrayComplex.h"
+
+#include <catch2/catch_test_macros.hpp>
+
+using namespace cppqedutils;
+
+
+namespace {
+MultiArray<dcomp,1> carray(std::vector<dcomp> v)
+{
+  const size_t s = v.size();
+  return MultiArray<dcomp,1>{{s}, [&] (size_t) {return std::move(v);}};
+}
+}
+
+
+TEST_CASE("scalar helpers", "[complex]")
+{
+  CHECK(sqr(3.) == 9.);
+  CHECK(sqr(1.+1i) == 2i);
+  CHECK(sqrAbs(3.+4i) == 25.);
+  CHECK(isNonZero(0.+2i)); CHECK_FALSE(isNonZero(dcomp{}));
+  CHECK(hasRealPart(1.+0i)); CHECK_FALSE(hasImagPart(1.+0i));
+  CHECK(relativeDeviation(3.,1.) == 0.5);
+}
+
+
+TEST_CASE("relativeDeviation(0,0) returns 0 as documented — finding #6", "[complex][contract][!mayfail]")
+{
+  CHECK(relativeDeviation(0.,0.) == 0.);
+}
+
+
+TEST_CASE("directProduct: values, layout, custom combiner", "[complex]")
+{
+  auto m1 = carray({1.+0i, 2.+0i});
+  auto m2 = carray({1i, 2i, 3i});
+  auto p  = directProduct(m1, m2);
+  REQUIRE((p.extents == Extents<2>{2,3}));
+  for (size_t i=0;i<2;++i) for (size_t j=0;j<3;++j) CHECK(p(i,j) == m1(i)*m2(j));
+
+  auto d = directProduct(m1, m1, [] (dcomp a, dcomp b) {return a*conj(b);});
+  CHECK(d(0,1) == m1(0)*conj(m1(1)));
+}
+
+
+TEST_CASE("in-place conj and Frobenius norm", "[complex]")
+{
+  auto m = carray({1.+2i, -3i});
+  conj(m);
+  CHECK(m(0) == 1.-2i); CHECK(m(1) == 3i);
+
+  auto n = carray({3.+0i, 4i});
+  CHECK(frobeniusNormSqr(n) == 25.);
+  CHECK(frobeniusNorm(n) == 5.);
+  MultiArray<dcomp,1> empty{{0}};
+  CHECK(frobeniusNormSqr(empty) == 0.);
+}
+
+
+TEST_CASE("vectorize and matricize are no-copy Eigen maps", "[complex][eigen]")
+{
+  MultiArray<dcomp,2> m{{3,3}, multiarray::zeroInit<dcomp>};
+  for (size_t i=0;i<3;++i) for (size_t j=0;j<3;++j) m(i,j)=dcomp(double(i),double(j));
+
+  auto vec = vectorize(m);
+  CHECK(vec.data() == m.dataStorage().data());
+  vec(0) = 42.;
+  CHECK(m(0,0) == dcomp(42.,0.));
+
+  auto mat = matricize(m);
+  CHECK(mat.data() == m.dataStorage().data());
+  for (size_t i=0;i<3;++i) for (size_t j=0;j<3;++j) CHECK(mat(i,j) == m(i,j));
+
+  // rank-4 {2,3,2,3} viewed as a 6×6 matrix: r = i0 + 2 i1, c = j0 + 2 j1
+  MultiArray<dcomp,4> m4{{2,3,2,3}, multiarray::zeroInit<dcomp>};
+  m4(1,2,0,1) = 7.;
+  auto M = matricize(m4);
+  CHECK(M(1+2*2, 0+2*1) == dcomp(7.));
+}
+
+
+TEST_CASE("halveExtents", "[complex]")
+{
+  CHECK((halveExtents(Extents<4>{2,3,2,3}) == Extents<2>{2,3}));
+#ifndef NDEBUG
+  CHECK_THROWS_AS(halveExtents(Extents<2>{2,3}), std::invalid_argument);
+#endif
+}
+
+
+TEST_CASE("hermitianConjugateSelf: off-diagonal part", "[complex]")
+{
+  MultiArray<dcomp,2> m{{3,3}, multiarray::zeroInit<dcomp>};
+  for (size_t i=0;i<3;++i) for (size_t j=0;j<3;++j) m(i,j)=dcomp(1.+i, double(j));
+  auto h = copy(m);
+  hermitianConjugateSelf(h);
+  for (size_t i=0;i<3;++i) for (size_t j=0;j<3;++j) if (i!=j) CHECK(h(i,j) == conj(m(j,i)));
+}
+
+
+TEST_CASE("hermitianConjugateSelf conjugates the diagonal — finding #4", "[complex][contract][!mayfail]")
+{
+  MultiArray<dcomp,2> m{{2,2}, multiarray::zeroInit<dcomp>};
+  m(0,0)=1.+2i; m(1,1)=-3i; m(0,1)=1.; m(1,0)=2i;
+  hermitianConjugateSelf(m);
+  CHECK(m(0,0) == 1.-2i);
+  CHECK(m(1,1) == 3i);
+}
+
+
+TEST_CASE("twoTimesRealPartOfSelf: off-diagonal part is M+M† and Hermitian", "[complex]")
+{
+  MultiArray<dcomp,2> m{{3,3}, multiarray::zeroInit<dcomp>};
+  for (size_t i=0;i<3;++i) for (size_t j=0;j<3;++j) m(i,j)=dcomp(1.+2.*i+j, 1.-double(j)+i);
+  auto r = copy(m);
+  twoTimesRealPartOfSelf(r.mutableView());
+  for (size_t i=0;i<3;++i) for (size_t j=i+1;j<3;++j) {
+    CHECK(r(i,j) == m(i,j)+conj(m(j,i)));
+    CHECK(r(j,i) == conj(r(i,j)));
+  }
+}
+
+
+TEST_CASE("twoTimesRealPartOfSelf: diagonal equals 2·Re — finding #5", "[complex][contract][!mayfail]")
+{
+  MultiArray<dcomp,2> m{{2,2}, multiarray::zeroInit<dcomp>};
+  m(0,0)=3.+1i; m(1,1)=-2.+4i;
+  auto expected0 = 2.*real(m(0,0)), expected1 = 2.*real(m(1,1));
+  twoTimesRealPartOfSelf(m.mutableView());
+  CHECK(m(0,0) == dcomp(expected0));   // currently 4·Re as written
+  CHECK(m(1,1) == dcomp(expected1));
+}
+
+
+TEST_CASE("JSON round trip for dcomp and complex arrays — finding #7 if this file fails to COMPILE", "[complex][json]")
+{
+  dcomp c{1.5,-2.5};
+  CHECK(json::value_to<dcomp>(json::value_from(c)) == c);
+  auto m = carray({1.+2i, 3.-4i});
+  auto back = json::value_to<MultiArray<dcomp,1>>(json::value_from(m));
+  CHECK(back.dataStorage() == m.dataStorage());
+}

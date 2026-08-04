@@ -52,7 +52,7 @@ namespace boost::json {
 /// @brief Boost.JSON deserialization for `std::complex<T>`: reads from a two-element JSON array `[re, im]`.
     template<class T>
     std::complex<T> tag_invoke(value_to_tag<std::complex<T>>, const value& jv) {
-        return {jv.at(0), jv.at(1)};
+        return { json::value_to<T>(jv.at(0)), json::value_to<T>(jv.at(1)) } ;
     }
 } // boost::json
 
@@ -72,14 +72,14 @@ template <typename N> concept scalar = std::convertible_to<N,double> || std::con
 template <size_t RANK>
 auto vectorize(MultiArray<dcomp,RANK>& ma)
 {
-  return Eigen::Map<CVector>{ma.dataStorage().data(),ma.dataView.size()};
+  return Eigen::Map<CVector>{ma.dataStorage().data(), Eigen::Index(ma.dataView.size())};
 }
 
 /// @brief Maps a const `MultiArray<dcomp,RANK>` to a const Eigen column vector (no data copy).
 template <size_t RANK>
 auto vectorize(const MultiArray<dcomp,RANK>& ma)
 {
-  return Eigen::Map<const CVector>{ma.dataView.data(),ma.dataView.size()};
+  return Eigen::Map<CVector>{ma.dataStorage().data(), Eigen::Index(ma.dataView.size())};
 }
 
 
@@ -108,16 +108,16 @@ Extents<TWO_TIMES_RANK/2> halveExtents(Extents<TWO_TIMES_RANK> extents)
 template <size_t TWO_TIMES_RANK>
 auto matricize(MultiArray<dcomp,TWO_TIMES_RANK>& ma)
 {
-  const size_t matrixDim = multiarray::calculateExtent(halveExtents(ma.extents));
-  return Eigen::Map<CMatrix>{ma.dataStorage().data(),matrixDim,matrixDim};
+  const Eigen::Index matrixDim = Eigen::Index(multiarray::calculateExtent(halveExtents(ma.extents)));
+  return Eigen::Map<CMatrix>{ma.dataStorage().data(), matrixDim, matrixDim};
 }
 
 /// @brief Maps a const rank-`2R` `MultiArray<dcomp>` to a const Eigen square matrix (no data copy).
 template <size_t TWO_TIMES_RANK>
 auto matricize(const MultiArray<dcomp,TWO_TIMES_RANK>& ma)
 {
-  const size_t matrixDim = multiarray::calculateExtent(halveExtents(ma.extents));
-  return Eigen::Map<const CMatrix>{ma.dataView.data(),matrixDim,matrixDim};
+  const Eigen::Index matrixDim = Eigen::Index(multiarray::calculateExtent(halveExtents(ma.extents)));
+  return Eigen::Map<CMatrix>{ma.dataStorage().data(), matrixDim, matrixDim};
 }
 
 
