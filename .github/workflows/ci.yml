@@ -32,3 +32,7 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+      - name: Benchmark smoke run
+        if: matrix.build_type == 'Release'
+        run: ./build/benchmarks/cppqed-multidiagonal-benchmarks --smoke > /dev/null
