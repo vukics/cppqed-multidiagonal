@@ -307,7 +307,7 @@ MultiDiagonal<1> identity(size_t dim);
 
 /// @brief Rank-1 identity operator: a single main diagonal (signed offset 0) filled with 1.
 /** (This could be compiled separately, but let’s not drop header-onliness for a single function) */
-quantumoperator::MultiDiagonal<1> quantumoperator::multidiagonal::identity(size_t dim)
+inline quantumoperator::MultiDiagonal<1> quantumoperator::multidiagonal::identity(size_t dim)
 {
   MultiDiagonal<1> res;
   res.diagonals.emplace(
