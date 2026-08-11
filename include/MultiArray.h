@@ -120,6 +120,8 @@ public:
       if (auto eComp=e++; static_cast<size_t>(i) >= *eComp)
         throw std::range_error("Index position: "+std::to_string(eComp-extents.begin())+", index value: "+std::to_string(i)+", extent: "+std::to_string(*eComp));
     } () );
+#else
+    (... , (void)i); // silence unused warning
 #endif // NDEBUG
   }
 
@@ -196,6 +198,8 @@ void checkExtents(MultiArrayConstView<T1,RANK> m1, MultiArrayConstView<T2,RANK> 
 {
 #ifndef   NDEBUG
   if (m1.extents!=m2.extents) throw std::runtime_error("Extent mismatch in "+message+": "+toStringJSON(m1.extents)+" "+toStringJSON(m2.extents));
+#else
+  (void)m1; (void)m2; (void)message; // silence unused warnings
 #endif // NDEBUG
 }
 
