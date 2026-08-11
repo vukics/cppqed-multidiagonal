@@ -40,6 +40,7 @@ if(PROJECT_IS_TOP_LEVEL)
   if(BUILD_TESTING)
     add_subdirectory(tests)
   endif()
+  add_subdirectory(benchmarks)
 endif()
 
 # ── Install ─────────────────────────────────────────────────────────────────
