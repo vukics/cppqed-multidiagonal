@@ -4,7 +4,7 @@
 [![Documentation](https://img.shields.io/badge/docs-github.io-blue)](https://vukics.github.io/cppqed-multidiagonal/)
 [![License](https://img.shields.io/badge/license-BSL--1.0-green)](LICENSE.txt)
 
-A C++20 library implementing sparse multidiagonal operator algebra for quantum systems of arbitrary arity, extracted from the [C++QED](https://github.com/vukics/cppqed) framework.
+A header-only C++ library implementing sparse multidiagonal operator algebra for quantum systems of arbitrary arity, extracted from the [C++QED](https://github.com/vukics/cppqed) framework.
 
 ## What is a multidiagonal operator?
 
@@ -14,34 +14,53 @@ For composite systems of arity $M$, `MultiDiagonal<RANK>` stores tensor-product-
 
 $$H/i = \bigotimes_{m=0}^{M-1} \sum_{i_m \in \mathbb{K}_m} \sum_{n_m=0}^{N_m-1-i_m} \alpha^{i_m}_{m,n} \left|n_m+i_m\right\rangle\left\langle n_m\right|$$
 
-with $\mathbb{K}_m$ an **arbitrary** set of offsets per subsystem axis.
+with $\mathbb{K}_m$ an **arbitrary** set of *signed* offsets per subsystem axis.
+
+## The signed-offset representation
+
+Each diagonal is keyed by a signed offset per axis — positive = upper, negative = lower, zero = main diagonal — making the offset map a homomorphism from $(\mathbb{Z}^R,+)$ into the operator algebra:
+
+- **composition**: $\text{offset}_{A|B} = \text{offset}_A + \text{offset}_B$ per axis, for arbitrary rank
+- **Hermitian conjugation**: negation of all offsets (plus conjugation of the stored values)
+- **direct product**: concatenation of the offset arrays, reflecting the tensor product structure exactly
+
+The diagonal at signed offset $o$ (per axis, dimension $D$) has extent $D-|o|$, and entry $k$ holds the matrix element $A_{k+o^-,\,k+o^+}$ with $o^\pm=\max(\pm o,0)$. This min(row,col)-anchored storage is symmetric under transposition, which is what makes conjugation a pure key negation. Application as $H/i$ on a state vector costs $O(N \cdot d)$ for $d$ diagonals; composition costs $O(d_A \cdot d_B)$ diagonal pairs — far cheaper than a general sparse–sparse multiply.
 
 ## Why not `Tridiagonal`?
 
 The predecessor class `Tridiagonal<RANK>` in C++QED v2 stored exactly three diagonals per axis — at positions $-K$, $0$, $+K$ for a single shared offset $K$ — and was **not closed under composition**: the product of two tridiagonal operators is in general pentadiagonal, and with different offsets is not tridiagonal at all. `MultiDiagonal` lifts all these restrictions — any number of diagonals at independent arbitrary offsets, and the operator algebra is closed under composition (`operator|`), direct product (`operator*`), addition, and Hermitian conjugation.
 
+The truncated algebra is represented *exactly*, including its physical deviations from the untruncated one: e.g. $[a,a^\dagger]$ at cutoff $D$ is $\mathrm{diag}(1,\ldots,1,1-D)$, not $\mathbb{1}$ — as it must be for any finite-dimensional representation.
+
 ## Features
 
-- **Arbitrary rank**: `MultiDiagonal<RANK>` for any compile-time arity $M$
-- **Closed algebra**: composition, direct product, addition, scalar multiplication, Hermitian conjugation
+- **Arbitrary rank**: `MultiDiagonal<RANK>` for any compile-time arity $M$, including composition at arbitrary rank
+- **Closed algebra**: composition, direct product, addition, scalar multiplication, Hermitian conjugation — with exact signed-offset arithmetic
 - **Efficient application**: applies as $H/i$ on a state vector via strided multi-index iteration, with compile-time loop unrolling via Boost.Hana
-- **Move-only semantics**: no accidental copies of large diagonal arrays
+- **Move-only semantics**: no accidental copies of large diagonal arrays; deep copies are explicit (`copy`)
+- **Deterministic results**: diagonals are stored in an ordered map keyed by signed offsets, so accumulation order in composition is well-defined and reproducible across platforms
 - **JSON serialization**: via Boost.JSON `tag_invoke`, useful for testing and debugging
-- **Time dependence**: interaction-picture time dependence ($\alpha_{m,n} e^{\delta_{m,n} t}$) is handled by `InteractionPictureDiagonal` in C++QED proper, keeping this library unconditionally time-independent
+- **Time dependence**: interaction-picture time dependence ($\alpha_{m,n} e^{\delta_{m,n} t}$) is handled by a companion frequency object in C++QED proper, keeping this library unconditionally time-independent
+- **Property-tested**: the algebraic identities — associativity, $(A|B)^\dagger = B^\dagger|A^\dagger$, distributivity, the mixed-product law $(A{\otimes}B)|(C{\otimes}D) = (A|C){\otimes}(B|D)$ — are verified against dense-matrix oracles in CI
 
 ## Requirements
 
-- C++20 compiler (GCC ≥ 12, Clang ≥ 15)
-- [Boost](https://www.boost.org/) ≥ 1.80 (Hana, JSON, Serialization)
+- C++23 compiler (GCC ≥ 13, Clang ≥ 17)
+- [Boost](https://www.boost.org/) ≥ 1.80 (Hana, JSON, Serialization) — header-only use plus Boost.JSON/Serialization
 - [Eigen3](https://eigen.tuxfamily.org/) ≥ 3.4
-- CMake ≥ 3.24
+- CMake ≥ 3.24 (for the build/test/install machinery; as a header-only library it can also be consumed by simply adding `include/` to the include path)
 
-## Building
+## Building and testing
+
+The library itself is header-only — nothing to build. Configuring and building compiles the test suite:
 
 ```bash
-cmake -B build
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
+ctest --test-dir build --output-on-failure
 ```
+
+(Debug enables the library's bounds and dimension checks, which the test suite exercises; CI runs the Debug×Release matrix on GCC and Clang.)
 
 ## Integration into a CMake project
 
@@ -70,15 +89,14 @@ target_link_libraries(MyTarget PUBLIC cppqed::multidiagonal)
 ```
 
 ## Repository structure
-
 ```
 include/
-  Traits.h            — FWD, Boost.Hana/JSON setup, passByValue_v, ReferenceMF
-  MultiArray.h        — generic rank-N array with strided view
+  Traits.h — FWD, Boost.Hana/JSON setup, passByValue_v, ReferenceMF
+  MultiArray.h — generic rank-N array with strided view
   MultiArrayComplex.h — dcomp specializations, directProduct, Eigen interop
-  MultiDiagonal.h     — multidiagonal operator algebra
-src/
-  MultiDiagonal.cc    — rank-1 identity and composition (operator|)
+  MultiDiagonal.h — multidiagonal operator algebra (incl. identity and composition)
+tests/
+  testMultiArray.cc, testMultiArrayComplex.cc, testMultiDiagonal.cc
 cmake/
   cppqed-multidiagonalConfig.cmake.in
 ```
